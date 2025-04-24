@@ -19,7 +19,6 @@ class _DashboardPageState extends State<DashboardPage> {
   double _ph = 0.0;
   double _turbidity = 0.0;
   double _waterLevel = 0.0;
-  int _timestamp = 0;
 
   Map<String, Map<String, double>> sensorLimits = {
     'temperature': {'min': 0, 'max': 50},
@@ -79,7 +78,6 @@ class _DashboardPageState extends State<DashboardPage> {
           _ph = (sensorData['ph level'] ?? 0.0).toDouble();
           _turbidity = (sensorData['turbidity'] ?? 0.0).toDouble();
           _waterLevel = (sensorData['water level'] ?? 0.0).toDouble();
-          _timestamp = (sensorData['timestamp'] ?? 0).toInt();
         });
       }
     }, onError: (error) {
@@ -109,10 +107,6 @@ class _DashboardPageState extends State<DashboardPage> {
             _buildSensorCard('Turbidity', _turbidity, 'NTU', 'turbidity', Icons.water_drop),
             _buildSensorCard('Water Level', _waterLevel, 'cm', 'water level', Icons.waves),
             const SizedBox(height: 20),
-            Text(
-              'Last updated: ${_formatTimestamp(_timestamp)}',
-              style: const TextStyle(color: Colors.grey),
-            ),
           ],
         ),
       ),
@@ -204,9 +198,4 @@ class _DashboardPageState extends State<DashboardPage> {
     return Color.lerp(Colors.green, Colors.red, normalizedValue)!;
   }
 
-  String _formatTimestamp(int timestamp) {
-    if (timestamp == 0) return 'Never';
-    final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
-    return '${date.hour}:${date.minute.toString().padLeft(2, '0')}:${date.second.toString().padLeft(2, '0')}';
-  }
 }

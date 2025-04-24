@@ -1,16 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart' as gauges;
 import 'package:syncfusion_flutter_charts/charts.dart' as charts;
-
-// Data model
-class SensorDataPoint {
-  final DateTime time;
-  final double value;
-
-  SensorDataPoint(this.time, this.value);
-}
 
 class SensorDetailPage extends StatefulWidget {
   final String sensorName;
@@ -40,10 +33,15 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
   late StreamSubscription<DatabaseEvent> _sensorSubscription;
   bool _isDataLoaded = false;
 
+  // Alarming values
+  double? _minAlarm;
+  double? _maxAlarm;
+
   @override
   void initState() {
     super.initState();
     _startListeningToSensor();
+    _fetchAlarmingValues();
   }
 
   void _startListeningToSensor() {
@@ -63,6 +61,29 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
         });
       }
     });
+  }
+
+  void _fetchAlarmingValues() async {
+    try {
+      // Fetch alarming values from Firestore
+      DocumentSnapshot sensorSnapshot = await FirebaseFirestore.instance
+          .collection('sensorSettings')
+          .doc(widget.sensorName.toLowerCase())
+          .get();
+
+      if (sensorSnapshot.exists) {
+        final data = sensorSnapshot.data() as Map<String, dynamic>;
+
+        setState(() {
+          _minAlarm = data['minAlarm'];
+          _maxAlarm = data['maxAlarm'];
+        });
+      } else {
+        print('Sensor document not found in Firestore');
+      }
+    } catch (e) {
+      print('Error fetching alarming values: $e');
+    }
   }
 
   @override
@@ -85,9 +106,10 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
             ? Column(
                 children: [
                   _buildCircularGauge(),
-                  const SizedBox(height: 20),
-                  _buildLinearGauge(),
-                  const SizedBox(height: 30),
+                  Text("Alarming Values", style: TextStyle(fontSize: 18),),
+                  const SizedBox(height: 5),
+                  _buildAlarmingValues(),
+                  const SizedBox(height: 10),
                   Expanded(child: _buildLineChart()),
                 ],
               )
@@ -95,6 +117,65 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
       ),
     );
   }
+
+Widget _buildAlarmingValues() {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      if (_minAlarm != null && _maxAlarm != null)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildAlarmInfo(
+              'Minimum: $_minAlarm',
+              Icons.trending_down,
+              Colors.blue,
+            ),
+            _buildAlarmInfo(
+              'Maximum: $_maxAlarm',
+              Icons.trending_up,
+              Colors.red,
+            ),
+          ],
+        ),
+      if (_minAlarm == null || _maxAlarm == null)
+        const Center(
+          child: CircularProgressIndicator(),
+        ),
+    ],
+  );
+}
+
+Widget _buildAlarmInfo(String label, IconData icon, Color color) {
+  return AnimatedContainer(
+    duration: const Duration(milliseconds: 300),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: color, width: 1),
+    ),
+    child: Row(
+      children: [
+        Icon(
+          icon,
+          color: color,
+          size: 20,
+        ),
+        const SizedBox(width: 10),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w500,
+            color: color,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 
   Widget _buildCircularGauge() {
     return SizedBox(
@@ -146,48 +227,6 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
     );
   }
 
-  Widget _buildLinearGauge() {
-    if (_currentValue == null || _currentValue!.isNaN || _currentValue! < widget.minValue || _currentValue! > widget.maxValue) {
-      return const SizedBox.shrink();
-    }
-
-    double safeValue = (_currentValue ?? widget.minValue).clamp(widget.minValue, widget.maxValue);
-
-    return gauges.SfLinearGauge(
-      minimum: widget.minValue,
-      maximum: widget.maxValue,
-      showLabels: true,
-      animateAxis: true,
-      animationDuration: 1000,
-      markerPointers: [
-        gauges.LinearWidgetPointer(
-          value: safeValue,
-          enableAnimation: true,
-          animationDuration: 1000,
-          child: Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.blue,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              '${safeValue.toStringAsFixed(1)} ${widget.unit}',
-              style: const TextStyle(color: Colors.white),
-            ),
-          ),
-        ),
-      ],
-      barPointers: [
-        gauges.LinearBarPointer(
-          value: safeValue,
-          color: Colors.blueAccent,
-          enableAnimation: true,
-          animationDuration: 1000,
-        ),
-      ],
-    );
-  }
-
   Widget _buildLineChart() {
     return charts.SfCartesianChart(
       title: charts.ChartTitle(text: 'Live ${widget.sensorName} Data'),
@@ -200,7 +239,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
         title: charts.AxisTitle(text: widget.unit),
       ),
       series: <charts.LineSeries<SensorDataPoint, DateTime>>[
-        charts.LineSeries<SensorDataPoint, DateTime>(
+        charts.LineSeries<SensorDataPoint, DateTime>(  
           dataSource: _dataPoints,
           xValueMapper: (SensorDataPoint point, _) => point.time,
           yValueMapper: (SensorDataPoint point, _) => point.value,
@@ -212,4 +251,11 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
       ],
     );
   }
+}
+
+class SensorDataPoint {
+  final DateTime time;
+  final double value;
+
+  SensorDataPoint(this.time, this.value);
 }
