@@ -21,9 +21,13 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0F1128), // Dark background
       body: _pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: const Color(0xFF1E2247), // Lighter dark tone for bottom bar
         currentIndex: _currentIndex,
+        selectedItemColor: const Color.fromARGB(255, 171, 184, 247), // Light blue text/icon for selected
+        unselectedItemColor: Colors.white54, // Muted white for unselected
         onTap: (index) {
           setState(() {
             _currentIndex = index;
@@ -31,11 +35,17 @@ class _MainScreenState extends State<MainScreen> {
         },
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard), label: 'Dashboard'),
+            icon: Icon(Icons.dashboard),
+            label: 'Dashboard',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.analytics), label: 'Analysis'),
+            icon: Icon(Icons.analytics),
+            label: 'Analysis',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.settings), label: 'Settings'),
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
         ],
       ),
     );

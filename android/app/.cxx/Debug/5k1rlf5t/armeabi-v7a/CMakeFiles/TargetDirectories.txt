@@ -1,0 +1,2 @@
+C:/Users/shalo/Desktop/Water_Quality_app/water_quality_1/android/app/.cxx/Debug/5k1rlf5t/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/Users/shalo/Desktop/Water_Quality_app/water_quality_1/android/app/.cxx/Debug/5k1rlf5t/armeabi-v7a/CMakeFiles/rebuild_cache.dir
