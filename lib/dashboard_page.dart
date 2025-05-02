@@ -89,25 +89,122 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget build(BuildContext context) {
     if (!_limitsLoaded) {
       return const Scaffold(
+        backgroundColor: Color(0xFF10132A),
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard'),
-        centerTitle: true,
+      backgroundColor: const Color(0xFF10132A),
+      body: Column(
+        children: [
+          _buildHeader(),
+          Padding(
+            padding: const EdgeInsets.only(left: 16.0, top: 20.0, bottom: 2.0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: RichText(
+                text: TextSpan(
+                  children: [
+                    const TextSpan(
+                      text: 'Overall Status: ',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    TextSpan(
+                      text: 'Good',
+                      style: TextStyle(
+                        color: Colors.greenAccent,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16.0),
+              children: [
+                _buildSensorCard('Temperature', _temperature, '°C', 'temperature', Icons.thermostat),
+                _buildSensorCard('pH Level', _ph, '', 'ph level', Icons.science),
+                _buildSensorCard('Turbidity', _turbidity, 'NTU', 'turbidity', Icons.water_drop),
+                _buildSensorCard('Water Level', _waterLevel, 'cm', 'water level', Icons.waves),
+
+                // Warning box
+                Container(
+                  padding: const EdgeInsets.all(16.0),
+                  margin: const EdgeInsets.only(top: 20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2E325A),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.redAccent),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: const [
+                          Icon(Icons.warning, color: Colors.redAccent),
+                          SizedBox(width: 8),
+                          Text(
+                            'Warning',
+                            style: TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        '• Keep the sensors clean and free from debris.\n'
+                        '• Ensure the device is properly powered and connected.\n'
+                        '• Monitor the app for alerts on unsafe water conditions.\n'
+                        '• Take immediate action if levels are unsafe.',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            _buildSensorCard('Temperature', _temperature, '°C', 'temperature', Icons.thermostat),
-            _buildSensorCard('pH Level', _ph, '', 'ph level', Icons.science),
-            _buildSensorCard('Turbidity', _turbidity, 'NTU', 'turbidity', Icons.water_drop),
-            _buildSensorCard('Water Level', _waterLevel, 'cm', 'water level', Icons.waves),
-            const SizedBox(height: 20),
-          ],
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      height: 100,
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E2247),
+      ),
+      child: SafeArea(
+        child: Center(
+          child: Text(
+            'Sensor Dashboard',
+            style: const TextStyle(
+              fontSize: 24,
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.1,
+            ),
+          ),
         ),
       ),
     );
@@ -135,27 +232,30 @@ class _DashboardPageState extends State<DashboardPage> {
         );
       },
       child: Card(
-        margin: const EdgeInsets.symmetric(vertical: 8.0),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        color: const Color(0xFF1E2247),
+        elevation: 3,
+        margin: const EdgeInsets.symmetric(vertical: 10),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Icon(icon, color: Colors.blue),
-                      const SizedBox(width: 8),
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                  CircleAvatar(
+                    backgroundColor: const Color(0xFF3A3F71),
+                    child: Icon(icon, color: const Color(0xFFB5C0F9)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
                       ),
-                    ],
+                    ),
                   ),
                   Text(
                     '${value.toStringAsFixed(2)}$unit',
@@ -167,24 +267,24 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               ClipRRect(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
                 child: LinearProgressIndicator(
                   value: normalizedValue,
-                  minHeight: 10,
-                  backgroundColor: Colors.grey[200],
+                  minHeight: 12,
+                  backgroundColor: const Color(0xFF2E325A),
                   valueColor: AlwaysStoppedAnimation<Color>(
                     _getValueColor(normalizedValue),
                   ),
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('$min$unit'),
-                  Text('$max$unit'),
+                  Text('$min$unit', style: const TextStyle(color: Colors.white70)),
+                  Text('$max$unit', style: const TextStyle(color: Colors.white70)),
                 ],
               ),
             ],
@@ -195,7 +295,6 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Color _getValueColor(double normalizedValue) {
-    return Color.lerp(Colors.green, Colors.red, normalizedValue)!;
+    return Color.lerp(Colors.greenAccent, Colors.redAccent, normalizedValue)!;
   }
-
 }

@@ -75,39 +75,89 @@ class _SensorSettingsPageState extends State<SensorSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Sensor Settings")),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              DropdownButtonFormField<String>(
-                value: _selectedSensor,
-                decoration: const InputDecoration(labelText: 'Select Sensor'),
-                items: _sensors.map((sensor) {
-                  return DropdownMenuItem(value: sensor, child: Text(sensor));
-                }).toList(),
-                onChanged: (sensor) {
-                  setState(() {
-                    _selectedSensor = sensor;
-                  });
-                  _loadSensorSettings(sensor!);
-                },
-                validator: (value) => value == null ? 'Please select a sensor' : null,
+    return TextSelectionTheme(
+      data: const TextSelectionThemeData(
+        cursorColor: Color.fromARGB(255, 62, 72, 180),
+        selectionColor: Color.fromARGB(255, 62, 72, 180),
+        selectionHandleColor: Color.fromARGB(255, 62, 72, 180),
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFF10132A),
+        body: Column(
+          children: [
+            _buildHeader('Sensor Settings'),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Form(
+                key: _formKey,
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: _selectedSensor,
+                      decoration: const InputDecoration(
+                        labelText: 'Select Sensor',
+                        labelStyle: TextStyle(color: Colors.white70),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.white38),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color.fromARGB(255, 62, 72, 180)),
+                        ),
+                      ),
+                      dropdownColor: const Color(0xFF1E2247),
+                      style: const TextStyle(color: Colors.white),
+                      items: _sensors.map((sensor) {
+                        return DropdownMenuItem(
+                          value: sensor,
+                          child: Text(sensor),
+                        );
+                      }).toList(),
+                      onChanged: (sensor) {
+                        setState(() {
+                          _selectedSensor = sensor;
+                        });
+                        _loadSensorSettings(sensor!);
+                      },
+                      validator: (value) =>
+                          value == null ? 'Please select a sensor' : null,
+                    ),
+                    const SizedBox(height: 20),
+                    _buildNumberField("Min Value", _minController),
+                    _buildNumberField("Max Value", _maxController),
+                    _buildNumberField("Min Alarm Value", _minAlarmController),
+                    _buildNumberField("Max Alarm Value", _maxAlarmController),
+                    const SizedBox(height: 30),
+                    _buildSaveButton(),
+                  ],
+                ),
               ),
-              const SizedBox(height: 20),
-              _buildNumberField("Min Value", _minController),
-              _buildNumberField("Max Value", _maxController),
-              _buildNumberField("Min Alarm Value", _minAlarmController),
-              _buildNumberField("Max Alarm Value", _maxAlarmController),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _saveSensorSettings,
-                child: const Text("Save Settings"),
-              ),
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(String title) {
+    return Container(
+      height: 100,
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1E2247),
+      ),
+      child: SafeArea(
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 24,
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.1,
+            ),
           ),
         ),
       ),
@@ -115,15 +165,65 @@ class _SensorSettingsPageState extends State<SensorSettingsPage> {
   }
 
   Widget _buildNumberField(String label, TextEditingController controller) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(labelText: label),
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      validator: (value) {
-        if (value == null || value.isEmpty) return 'Enter $label';
-        if (double.tryParse(value) == null) return 'Enter a valid number';
-        return null;
-      },
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      child: TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(color: Colors.white70),
+          enabledBorder: const UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.white38),
+          ),
+          focusedBorder: const UnderlineInputBorder(
+            borderSide: BorderSide(color: Color.fromARGB(255, 62, 72, 180)),
+          ),
+        ),
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        validator: (value) {
+          if (value == null || value.isEmpty) return 'Enter $label';
+          if (double.tryParse(value) == null) return 'Enter a valid number';
+          return null;
+        },
+        style: const TextStyle(color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color.fromARGB(255, 29, 36, 107),
+            Color.fromARGB(255, 62, 72, 180)
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: _saveSensorSettings,
+          child: const Padding(
+            padding: EdgeInsets.symmetric(vertical: 14, horizontal: 32),
+            child: Center(
+              child: Text(
+                "Save Settings",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

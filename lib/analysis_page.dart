@@ -6,27 +6,47 @@ class AnalysisPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Analysis'),
-      ),
-      body: const Center(
-        child: Text('Historical data analysis will be shown here'),
+      backgroundColor: Color(0xFF10132A),
+      body: Column(
+        children: [
+          _buildHeader('Analysis'),
+          const Expanded(
+            child: Center(
+              child: Text(
+                'Historical data analysis will be shown here',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white70,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
-}
 
-class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
+  Widget _buildHeader(String title) {
+    return Container(
+      height: 100,
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1E2247),
       ),
-      body: const Center(
-        child: Text('App settings will be shown here'),
+      child: SafeArea(
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 24,
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.1,
+            ),
+          ),
+        ),
       ),
     );
   }
