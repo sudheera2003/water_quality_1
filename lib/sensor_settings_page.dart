@@ -12,8 +12,14 @@ class _SensorSettingsPageState extends State<SensorSettingsPage> {
   final _formKey = GlobalKey<FormState>();
   final _firestore = FirebaseFirestore.instance;
 
-  final List<String> _sensors = ['temperature', 'ph level', 'turbidity', 'water level'];
-  String? _selectedSensor;
+  final Map<String, String> _sensorMap = {
+    'Temperature': 'temperature',
+    'pH Level': 'ph_level',
+    'Turbidity': 'turbidity',
+    'Water Level': 'water_level',
+  };
+
+  String? _selectedSensorDisplay;
 
   late TextEditingController _minController;
   late TextEditingController _maxController;
@@ -38,8 +44,9 @@ class _SensorSettingsPageState extends State<SensorSettingsPage> {
     super.dispose();
   }
 
-  Future<void> _loadSensorSettings(String sensor) async {
-    final doc = await _firestore.collection('sensorSettings').doc(sensor).get();
+  Future<void> _loadSensorSettings(String displayName) async {
+    final docId = _sensorMap[displayName]!;
+    final doc = await _firestore.collection('sensorSettings').doc(docId).get();
     if (doc.exists) {
       final data = doc.data()!;
       setState(() {
@@ -59,8 +66,9 @@ class _SensorSettingsPageState extends State<SensorSettingsPage> {
   }
 
   Future<void> _saveSensorSettings() async {
-    if (_formKey.currentState!.validate() && _selectedSensor != null) {
-      await _firestore.collection('sensorSettings').doc(_selectedSensor).set({
+    if (_formKey.currentState!.validate() && _selectedSensorDisplay != null) {
+      final docId = _sensorMap[_selectedSensorDisplay]!;
+      await _firestore.collection('sensorSettings').doc(docId).set({
         'min': double.tryParse(_minController.text),
         'max': double.tryParse(_maxController.text),
         'minAlarm': double.tryParse(_minAlarmController.text),
@@ -83,57 +91,60 @@ class _SensorSettingsPageState extends State<SensorSettingsPage> {
       ),
       child: Scaffold(
         backgroundColor: const Color(0xFF10132A),
-        body: Column(
-          children: [
-            _buildHeader('Sensor Settings'),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  shrinkWrap: true,
-                  children: [
-                    DropdownButtonFormField<String>(
-                      value: _selectedSensor,
-                      decoration: const InputDecoration(
-                        labelText: 'Select Sensor',
-                        labelStyle: TextStyle(color: Colors.white70),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white38),
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              _buildHeader('Sensor Settings'),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      DropdownButtonFormField<String>(
+                        value: _selectedSensorDisplay,
+                        decoration: const InputDecoration(
+                          labelText: 'Select Sensor',
+                          labelStyle: TextStyle(color: Colors.white70),
+                          enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: Colors.white38),
+                          ),
+                          focusedBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(
+                                color: Color.fromARGB(255, 62, 72, 180)),
+                          ),
                         ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Color.fromARGB(255, 62, 72, 180)),
-                        ),
+                        dropdownColor: const Color(0xFF1E2247),
+                        style: const TextStyle(color: Colors.white),
+                        items: _sensorMap.keys.map((displayName) {
+                          return DropdownMenuItem(
+                            value: displayName,
+                            child: Text(displayName),
+                          );
+                        }).toList(),
+                        onChanged: (displayName) {
+                          setState(() {
+                            _selectedSensorDisplay = displayName;
+                          });
+                          _loadSensorSettings(displayName!);
+                        },
+                        validator: (value) =>
+                            value == null ? 'Please select a sensor' : null,
                       ),
-                      dropdownColor: const Color(0xFF1E2247),
-                      style: const TextStyle(color: Colors.white),
-                      items: _sensors.map((sensor) {
-                        return DropdownMenuItem(
-                          value: sensor,
-                          child: Text(sensor),
-                        );
-                      }).toList(),
-                      onChanged: (sensor) {
-                        setState(() {
-                          _selectedSensor = sensor;
-                        });
-                        _loadSensorSettings(sensor!);
-                      },
-                      validator: (value) =>
-                          value == null ? 'Please select a sensor' : null,
-                    ),
-                    const SizedBox(height: 20),
-                    _buildNumberField("Min Value", _minController),
-                    _buildNumberField("Max Value", _maxController),
-                    _buildNumberField("Min Alarm Value", _minAlarmController),
-                    _buildNumberField("Max Alarm Value", _maxAlarmController),
-                    const SizedBox(height: 30),
-                    _buildSaveButton(),
-                  ],
+                      const SizedBox(height: 20),
+                      _buildNumberField("Min Value", _minController),
+                      _buildNumberField("Max Value", _maxController),
+                      _buildNumberField("Min Alarm Value", _minAlarmController),
+                      _buildNumberField("Max Alarm Value", _maxAlarmController),
+                      const SizedBox(height: 30),
+                      _buildSaveButton(),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -1,7 +1,5 @@
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/material.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'sensor_detail_page.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -12,7 +10,6 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  late DatabaseReference _databaseRef;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   double _temperature = 0.0;
@@ -21,10 +18,10 @@ class _DashboardPageState extends State<DashboardPage> {
   double _waterLevel = 0.0;
 
   Map<String, Map<String, double>> sensorLimits = {
-    'temperature': {'min': 0, 'max': 50},
-    'ph level': {'min': 0, 'max': 14},
-    'turbidity': {'min': 0, 'max': 100},
-    'water level': {'min': 0, 'max': 200},
+    'temperature': {'min': 0, 'max': 50, 'minAlarm': 0, 'maxAlarm': 50},
+    'ph_level': {'min': 0, 'max': 14, 'minAlarm': 0, 'maxAlarm': 14},
+    'turbidity': {'min': 0, 'max': 100, 'minAlarm': 0, 'maxAlarm': 100},
+    'water_level': {'min': 0, 'max': 200, 'minAlarm': 0, 'maxAlarm': 200},
   };
 
   bool _limitsLoaded = false;
@@ -32,56 +29,58 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void initState() {
     super.initState();
-    final app = Firebase.app('myCustomApp');
-    _databaseRef = FirebaseDatabase.instanceFor(app: app).ref();
-
     _fetchSensorLimits().then((_) {
       setState(() {
         _limitsLoaded = true;
       });
     });
-
     _setupRealtimeListener();
   }
 
   Future<void> _fetchSensorLimits() async {
-    final sensors = ['temperature', 'ph level', 'turbidity', 'water level'];
-    for (var sensor in sensors) {
-      final doc = await _firestore.collection('sensorSettings').doc(sensor).get();
-      if (doc.exists) {
-        final data = doc.data();
-        if (data != null) {
-          sensorLimits[sensor] = {
-            'min': (data['min'] ?? 0).toDouble(),
-            'max': (data['max'] ?? 100).toDouble(),
-          };
+    try {
+      final sensors = ['temperature', 'ph_level', 'turbidity', 'water_level'];
+      for (var sensor in sensors) {
+        final doc =
+            await _firestore.collection('sensorSettings').doc(sensor).get();
+        if (doc.exists) {
+          print('Fetched $sensor: ${doc.data()}'); // Debug print
+          final data = doc.data();
+          if (data != null) {
+            sensorLimits[sensor] = {
+              'min': (data['min'] as num?)?.toDouble() ?? 0.0,
+              'max': (data['max'] as num?)?.toDouble() ?? 100.0,
+              'minAlarm': (data['minAlarm'] as num?)?.toDouble() ?? 0.0,
+              'maxAlarm': (data['maxAlarm'] as num?)?.toDouble() ?? 100.0,
+            };
+          }
+        } else {
+          print('Document $sensor does not exist'); // Debug print
         }
       }
+    } catch (e) {
+      print('Error fetching sensor limits: $e'); // Debug print
     }
   }
 
   void _setupRealtimeListener() {
-    _databaseRef.onValue.listen((DatabaseEvent event) {
-      final data = event.snapshot.value;
-
-      if (data != null && mounted) {
-        Map<dynamic, dynamic> sensorData;
-        if (data is Map) {
-          sensorData = data;
-        } else {
-          debugPrint('Unexpected data format: ${data.runtimeType}');
-          return;
+    _firestore
+        .collection('sensorReadings')
+        .doc('latest')
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.exists && mounted) {
+        final data = snapshot.data();
+        if (data != null) {
+          setState(() {
+            // Using the actual field names from your Firestore
+            _temperature = (data['temp'] as num?)?.toDouble() ?? 0.0;
+            _ph = (data['ph'] as num?)?.toDouble() ?? 0.0;
+            _turbidity = (data['turbidity'] as num?)?.toDouble() ?? 0.0;
+            _waterLevel = (data['water_level'] as num?)?.toDouble() ?? 0.0;
+          });
         }
-
-        setState(() {
-          _temperature = (sensorData['temperature'] ?? 0.0).toDouble();
-          _ph = (sensorData['ph level'] ?? 0.0).toDouble();
-          _turbidity = (sensorData['turbidity'] ?? 0.0).toDouble();
-          _waterLevel = (sensorData['water level'] ?? 0.0).toDouble();
-        });
       }
-    }, onError: (error) {
-      debugPrint('Error reading data: $error');
     });
   }
 
@@ -115,9 +114,11 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                     ),
                     TextSpan(
-                      text: 'Good',
+                      text: _getOverallStatus(),
                       style: TextStyle(
-                        color: Colors.greenAccent,
+                        color: _getOverallStatus() == 'Good'
+                            ? Colors.greenAccent
+                            : Colors.redAccent,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -127,17 +128,18 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ),
           ),
-
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(16.0),
               children: [
-                _buildSensorCard('Temperature', _temperature, '°C', 'temperature', Icons.thermostat),
-                _buildSensorCard('pH Level', _ph, '', 'ph level', Icons.science),
-                _buildSensorCard('Turbidity', _turbidity, 'NTU', 'turbidity', Icons.water_drop),
-                _buildSensorCard('Water Level', _waterLevel, 'cm', 'water level', Icons.waves),
-
-                // Warning box
+                _buildSensorCard('Temperature', _temperature, '°C',
+                    'temperature', Icons.thermostat),
+                _buildSensorCard(
+                    'pH Level', _ph, '', 'ph_level', Icons.science),
+                _buildSensorCard('Turbidity', _turbidity, 'NTU', 'turbidity',
+                    Icons.water_drop),
+                _buildSensorCard('Water Level', _waterLevel, 'cm',
+                    'water_level', Icons.waves),
                 Container(
                   padding: const EdgeInsets.all(16.0),
                   margin: const EdgeInsets.only(top: 20),
@@ -148,9 +150,9 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                    children: const [
                       Row(
-                        children: const [
+                        children: [
                           Icon(Icons.warning, color: Colors.redAccent),
                           SizedBox(width: 8),
                           Text(
@@ -163,8 +165,8 @@ class _DashboardPageState extends State<DashboardPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
-                      const Text(
+                      SizedBox(height: 10),
+                      Text(
                         '• Keep the sensors clean and free from debris.\n'
                         '• Ensure the device is properly powered and connected.\n'
                         '• Monitor the app for alerts on unsafe water conditions.\n'
@@ -191,14 +193,14 @@ class _DashboardPageState extends State<DashboardPage> {
       height: 100,
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E2247),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1E2247),
       ),
-      child: SafeArea(
+      child: const SafeArea(
         child: Center(
           child: Text(
             'Sensor Dashboard',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 24,
               color: Colors.white,
               fontWeight: FontWeight.w600,
@@ -210,9 +212,22 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildSensorCard(String title, double value, String unit, String dataKey, IconData icon) {
-    final min = sensorLimits[dataKey]?['min'] ?? 0;
-    final max = sensorLimits[dataKey]?['max'] ?? 100;
+  Widget _buildSensorCard(
+      String title, double value, String unit, String dataKey, IconData icon) {
+    // Map dashboard IDs to Firestore field names
+    final firestoreFieldName = {
+          'temperature': 'temp',
+          'ph_level': 'ph',
+          'turbidity': 'turbidity',
+          'water_level': 'water_level',
+        }[dataKey] ??
+        dataKey;
+
+    final limits = sensorLimits[dataKey] ??
+        {'min': 0.0, 'max': 100.0, 'minAlarm': 0.0, 'maxAlarm': 100.0};
+
+    final min = limits['min']!;
+    final max = limits['max']!;
     final normalizedValue = ((value - min) / (max - min)).clamp(0.0, 1.0);
 
     return GestureDetector(
@@ -223,10 +238,11 @@ class _DashboardPageState extends State<DashboardPage> {
             builder: (context) => SensorDetailPage(
               sensorName: title,
               unit: unit,
-              minValue: min,
-              maxValue: max,
-              databaseRef: _databaseRef,
-              dataKey: dataKey,
+              minValue: limits['min']!,
+              maxValue: limits['max']!,
+              minAlarm: limits['minAlarm']!,
+              maxAlarm: limits['maxAlarm']!,
+              sensorId: firestoreFieldName, // Use the mapped field name
             ),
           ),
         );
@@ -283,8 +299,10 @@ class _DashboardPageState extends State<DashboardPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('$min$unit', style: const TextStyle(color: Colors.white70)),
-                  Text('$max$unit', style: const TextStyle(color: Colors.white70)),
+                  Text('$min$unit',
+                      style: const TextStyle(color: Colors.white70)),
+                  Text('$max$unit',
+                      style: const TextStyle(color: Colors.white70)),
                 ],
               ),
             ],
@@ -296,5 +314,21 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Color _getValueColor(double normalizedValue) {
     return Color.lerp(Colors.greenAccent, Colors.redAccent, normalizedValue)!;
+  }
+
+  String _getOverallStatus() {
+    final checks = [
+      (_temperature > sensorLimits['temperature']!['minAlarm']! &&
+          _temperature < sensorLimits['temperature']!['maxAlarm']!),
+      (_ph > sensorLimits['ph_level']!['minAlarm']! &&
+          _ph < sensorLimits['ph_level']!['maxAlarm']!),
+      (_turbidity > sensorLimits['turbidity']!['minAlarm']! &&
+          _turbidity < sensorLimits['turbidity']!['maxAlarm']!),
+      (_waterLevel > sensorLimits['water_level']!['minAlarm']! &&
+          _waterLevel < sensorLimits['water_level']!['maxAlarm']!),
+    ];
+
+    final allGood = checks.every((check) => check);
+    return allGood ? 'Good' : 'Alert';
   }
 }
