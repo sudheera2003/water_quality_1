@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'sensor_detail_page.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -92,6 +93,13 @@ class _DashboardPageState extends State<DashboardPage> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
+    
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Color(0xFF1E2247),
+        statusBarIconBrightness: Brightness.light,
+      ),
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFF10132A),

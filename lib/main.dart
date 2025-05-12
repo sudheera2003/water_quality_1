@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/services.dart';
 import 'package:water_quality/firebase_options.dart';
 import 'package:water_quality/main_screen.dart';
 
@@ -20,13 +19,6 @@ class WaterQualityApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Color(0xFF1E2247),
-        statusBarIconBrightness: Brightness.light,
-      ),
-    );
     return MaterialApp(
       title: 'Water Quality Monitor',
       debugShowCheckedModeBanner: false,

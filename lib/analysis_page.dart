@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:math';
 import 'package:syncfusion_flutter_charts/charts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 class AnalysisPage extends StatefulWidget {
   const AnalysisPage({super.key});
@@ -12,69 +13,20 @@ class AnalysisPage extends StatefulWidget {
 class _AnalysisPageState extends State<AnalysisPage> {
   String? selectedSensor = 'Temperature';
   String? selectedTimePeriod = 'Day';
-  
-  // Mock data - replace with your actual data
-  final Map<String, Map<String, List<SensorData>>> sensorData = {
-    'Temperature': {
-      'Hour': [
-        SensorData(time: '00:00', value: 22.4),
-        SensorData(time: '01:00', value: 22.1),
-        SensorData(time: '02:00', value: 21.8),
-        SensorData(time: '03:00', value: 21.5),
-        SensorData(time: '04:00', value: 21.3),
-        SensorData(time: '05:00', value: 21.6),
-        SensorData(time: '06:00', value: 22.0),
-        SensorData(time: '07:00', value: 22.8),
-        SensorData(time: '08:00', value: 23.5),
-        SensorData(time: '09:00', value: 24.2),
-        SensorData(time: '10:00', value: 24.8),
-        SensorData(time: '11:00', value: 25.1),
-      ],
-      'Day': List.generate(24, (i) => SensorData(time: '$i:00', value: 20 + (i/24)*8 + (Random().nextDouble()*2-1))),
-      'Week': List.generate(7, (i) => SensorData(time: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i], value: 18 + i + (Random().nextDouble()*3-1.5))),
-      'Month': List.generate(30, (i) => SensorData(time: '${i+1}', value: 15 + (i/30)*12 + (Random().nextDouble()*4-2))),
-    },
-    'pH Level': {
-      'Hour': [
-        SensorData(time: '00:00', value: 7.2),
-        SensorData(time: '01:00', value: 7.1),
-        SensorData(time: '02:00', value: 7.0),
-        SensorData(time: '03:00', value: 6.9),
-        SensorData(time: '04:00', value: 6.8),
-        SensorData(time: '05:00', value: 6.9),
-        SensorData(time: '06:00', value: 7.0),
-        SensorData(time: '07:00', value: 7.1),
-        SensorData(time: '08:00', value: 7.2),
-        SensorData(time: '09:00', value: 7.3),
-        SensorData(time: '10:00', value: 7.4),
-        SensorData(time: '11:00', value: 7.5),
-      ],
-      'Day': List.generate(24, (i) => SensorData(time: '$i:00', value: 6.5 + (i/24)*1.5 + (Random().nextDouble()*0.3-0.15))),
-      'Week': List.generate(7, (i) => SensorData(time: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i], value: 6.8 + (i*0.1) + (Random().nextDouble()*0.4-0.2))),
-      'Month': List.generate(30, (i) => SensorData(time: '${i+1}', value: 6.5 + (i/30)*1.8 + (Random().nextDouble()*0.5-0.25))),
-    },
-    'Turbidity': {
-      'Hour': List.generate(12, (i) => SensorData(time: '${i*2}:00', value: 5 + (i/12)*15 + (Random().nextDouble()*3-1.5))),
-      'Day': List.generate(24, (i) => SensorData(time: '$i:00', value: 5 + (i/24)*20 + (Random().nextDouble()*4-2))),
-      'Week': List.generate(7, (i) => SensorData(time: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i], value: 5 + i*3 + (Random().nextDouble()*5-2.5))),
-      'Month': List.generate(30, (i) => SensorData(time: '${i+1}', value: 5 + (i/30)*25 + (Random().nextDouble()*6-3))),
-    },
-    'Water Level': {
-      'Hour': List.generate(12, (i) => SensorData(time: '${i*2}:00', value: 50 + (i/12)*30 + (Random().nextDouble()*5-2.5))),
-      'Day': List.generate(24, (i) => SensorData(time: '$i:00', value: 50 + (i/24)*40 + (Random().nextDouble()*6-3))),
-      'Week': List.generate(7, (i) => SensorData(time: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i], value: 50 + i*7 + (Random().nextDouble()*8-4))),
-      'Month': List.generate(30, (i) => SensorData(time: '${i+1}', value: 50 + (i/30)*60 + (Random().nextDouble()*10-5))),
-    },
-  };
+  bool isLoading = false;
+  String errorMessage = '';
 
   List<String> sensorOptions = ['Temperature', 'pH Level', 'Turbidity', 'Water Level'];
   List<String> timePeriodOptions = ['Hour', 'Day', 'Week', 'Month'];
 
   @override
-  Widget build(BuildContext context) {
-    final currentData = sensorData[selectedSensor]?[selectedTimePeriod] ?? [];
-    final stats = _calculateStats(currentData);
+  void initState() {
+    super.initState();
+    _fetchData();
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF10132A),
       body: Column(
@@ -92,7 +44,10 @@ class _AnalysisPageState extends State<AnalysisPage> {
                       child: _buildDropdown(
                         value: selectedSensor,
                         items: sensorOptions,
-                        onChanged: (value) => setState(() => selectedSensor = value),
+                        onChanged: (value) => setState(() {
+                          selectedSensor = value;
+                          _fetchData();
+                        }),
                         hint: 'Select Sensor',
                       ),
                     ),
@@ -101,7 +56,10 @@ class _AnalysisPageState extends State<AnalysisPage> {
                       child: _buildDropdown(
                         value: selectedTimePeriod,
                         items: timePeriodOptions,
-                        onChanged: (value) => setState(() => selectedTimePeriod = value),
+                        onChanged: (value) => setState(() {
+                          selectedTimePeriod = value;
+                          _fetchData();
+                        }),
                         hint: 'Select Time Period',
                       ),
                     ),
@@ -109,47 +67,163 @@ class _AnalysisPageState extends State<AnalysisPage> {
                 ),
                 const SizedBox(height: 24),
                 
-                // Statistics Cards
-                _buildStatisticsCards(stats),
-                const SizedBox(height: 24),
+                if (isLoading)
+                  const Center(child: CircularProgressIndicator()),
                 
-                // Chart Title
-                Text(
-                  '$selectedSensor Trend ($selectedTimePeriod)',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                if (errorMessage.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Text(
+                      errorMessage,
+                      style: const TextStyle(color: Colors.red),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
                 
-                // Chart Container
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E2247),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.all(16),
-                  height: 300,
-                  child: _buildChart(currentData),
+                // Data display
+                StreamBuilder<List<SensorData>>(
+                  stream: _getSensorDataStream(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting && !isLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    
+                    if (snapshot.hasError) {
+                      return Text('Error: ${snapshot.error}');
+                    }
+                    
+                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return const Center(child: Text('No data available', style: TextStyle(color: Colors.white)));
+                    }
+                    
+                    final currentData = snapshot.data!;
+                    final stats = _calculateStats(currentData);
+                    
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Statistics Cards
+                        _buildStatisticsCards(stats),
+                        const SizedBox(height: 24),
+                        
+                        // Chart Title
+                        Text(
+                          '$selectedSensor Trend ($selectedTimePeriod)',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        
+                        // Chart Container
+                        Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1E2247),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          padding: const EdgeInsets.all(16),
+                          height: 300,
+                          child: _buildChart(currentData),
+                        ),
+                        
+                        // Additional Recommendations
+                        if (stats['avg'] != null) 
+                          _buildRecommendations(stats['avg']!, selectedSensor!),
+                      ],
+                    );
+                  },
                 ),
-                
-                // Additional Recommendations
-                if (stats['avg'] != null) _buildRecommendations(stats['avg']!, selectedSensor!),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Stream<List<SensorData>> _getSensorDataStream() {
+    final now = DateTime.now();
+    DateTime startDate;
+    
+    switch (selectedTimePeriod) {
+      case 'Hour':
+        startDate = now.subtract(const Duration(hours: 1));
+        break;
+      case 'Day':
+        startDate = now.subtract(const Duration(days: 1));
+        break;
+      case 'Week':
+        startDate = now.subtract(const Duration(days: 7));
+        break;
+      case 'Month':
+        startDate = now.subtract(const Duration(days: 30));
+        break;
+      default:
+        startDate = now.subtract(const Duration(days: 1));
+    }
+    
+    // Convert sensor name to match your Firebase document ID format
+    final sensorName = selectedSensor?.toLowerCase().replaceAll(' ', '_') ?? '';
+    
+    return FirebaseFirestore.instance
+        .collection('sensor_readings')
+        .where('timestamp', isGreaterThanOrEqualTo: startDate)
+        .orderBy('timestamp', descending: false)
+        .snapshots()
+        .map((snapshot) {
+      // Filter documents for the selected sensor and process data
+      return snapshot.docs
+          .where((doc) => doc.id.endsWith(sensorName))
+          .map((doc) {
+            final data = doc.data();
+            final timestamp = (data['timestamp'] as Timestamp).toDate();
+            
+            // Format time based on selected period
+            String timeLabel;
+            if (selectedTimePeriod == 'Hour' || selectedTimePeriod == 'Day') {
+              timeLabel = DateFormat('HH:mm').format(timestamp);
+            } else if (selectedTimePeriod == 'Week') {
+              timeLabel = DateFormat('EEE').format(timestamp);
+            } else {
+              timeLabel = DateFormat('d').format(timestamp);
+            }
+            
+            return SensorData(
+              time: timeLabel,
+              value: (data['value'] as num).toDouble(),
+              timestamp: timestamp,
+            );
+          })
+          .toList();
+    });
+  }
+
+  Future<void> _fetchData() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = '';
+    });
+    
+    try {
+      // The StreamBuilder will handle the data loading
+      await Future.delayed(const Duration(milliseconds: 100)); // Small delay for smoother UI
+      setState(() {
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+        errorMessage = 'Failed to load data: $e';
+      });
+    }
   }
 
   Widget _buildDropdown({
@@ -254,7 +328,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
         majorGridLines: MajorGridLines(color: Colors.white.withOpacity(0.1)),
         labelStyle: const TextStyle(color: Colors.white70),
       ),
-      series: <LineSeries<SensorData, String>>[ // Changed this line
+      series: <LineSeries<SensorData, String>>[
         LineSeries<SensorData, String>(
           dataSource: data,
           xValueMapper: (SensorData data, _) => data.time,
@@ -287,43 +361,43 @@ class _AnalysisPageState extends State<AnalysisPage> {
     if (sensor == 'Temperature') {
       if (avgValue < 10) {
         recommendation = 'Water is too cold. Consider heating.';
-        statusColor = Colors.blue;
+        statusColor = Colors.blueAccent;
       } else if (avgValue > 30) {
         recommendation = 'Water is too warm. Consider cooling.';
-        statusColor = Colors.red;
+        statusColor = Colors.redAccent;
       } else {
         recommendation = 'Temperature is within optimal range.';
-        statusColor = Colors.green;
+        statusColor = Colors.greenAccent;
       }
     } else if (sensor == 'pH Level') {
       if (avgValue < 6.5) {
         recommendation = 'Water is too acidic. Needs treatment.';
-        statusColor = Colors.orange;
+        statusColor = Colors.orangeAccent;
       } else if (avgValue > 8.5) {
         recommendation = 'Water is too alkaline. Needs treatment.';
-        statusColor = Colors.orange;
+        statusColor = Colors.orangeAccent;
       } else {
         recommendation = 'pH level is balanced. Good condition.';
-        statusColor = Colors.green;
+        statusColor = Colors.greenAccent;
       }
     } else if (sensor == 'Turbidity') {
       if (avgValue > 10) {
         recommendation = 'High turbidity detected. Filtration needed.';
-        statusColor = Colors.orange;
+        statusColor = Colors.orangeAccent;
       } else {
         recommendation = 'Water clarity is good.';
-        statusColor = Colors.green;
+        statusColor = Colors.greenAccent;
       }
     } else if (sensor == 'Water Level') {
       if (avgValue < 30) {
         recommendation = 'Water level is low. Consider refilling.';
-        statusColor = Colors.orange;
+        statusColor = Colors.orangeAccent;
       } else if (avgValue > 90) {
         recommendation = 'Water level is too high. Risk of overflow.';
-        statusColor = Colors.red;
+        statusColor = Colors.redAccent;
       } else {
         recommendation = 'Water level is optimal.';
-        statusColor = Colors.green;
+        statusColor = Colors.greenAccent;
       }
     }
 
@@ -338,14 +412,14 @@ class _AnalysisPageState extends State<AnalysisPage> {
       child: Row(
         children: [
           Icon(
-            statusColor == Colors.green ? Icons.check_circle : Icons.warning,
+            statusColor == Colors.greenAccent ? Icons.check_circle : Icons.warning,
             color: statusColor,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               recommendation,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
               ),
@@ -358,17 +432,17 @@ class _AnalysisPageState extends State<AnalysisPage> {
 
   Map<String, double?> _calculateStats(List<SensorData> data) {
     if (data.isEmpty) return {'min': null, 'max': null, 'avg': null};
-    
+
     double min = data.first.value;
     double max = data.first.value;
     double sum = 0;
-    
+
     for (var item in data) {
       if (item.value < min) min = item.value;
       if (item.value > max) max = item.value;
       sum += item.value;
     }
-    
+
     return {
       'min': min,
       'max': max,
@@ -405,6 +479,11 @@ class _AnalysisPageState extends State<AnalysisPage> {
 class SensorData {
   final String time;
   final double value;
+  final DateTime timestamp;
 
-  SensorData({required this.time, required this.value});
+  SensorData({
+    required this.time,
+    required this.value,
+    required this.timestamp,
+  });
 }

@@ -293,7 +293,7 @@ Widget _buildCircularGauge() {
           padding: const EdgeInsets.all(16.0),
           child: charts.SfCartesianChart(
             title: charts.ChartTitle(
-              text: '${widget.sensorName} History',
+              text: 'Live Readings',
               textStyle: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
