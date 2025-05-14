@@ -146,7 +146,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     'pH Level', _ph, '', 'ph_level', Icons.science),
                 _buildSensorCard('Turbidity', _turbidity, 'NTU', 'turbidity',
                     Icons.water_drop),
-                _buildSensorCard('Water Level', _waterLevel, 'cm',
+                _buildSensorCard('Water Level', _waterLevel, '%',
                     'water_level', Icons.waves),
                 Container(
                   padding: const EdgeInsets.all(16.0),
