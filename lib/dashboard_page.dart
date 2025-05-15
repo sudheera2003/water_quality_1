@@ -222,7 +222,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildSensorCard(
       String title, double value, String unit, String dataKey, IconData icon) {
-    // Map dashboard IDs to Firestore field names
+  
     final firestoreFieldName = {
           'temperature': 'temp',
           'ph_level': 'ph',
